@@ -1,0 +1,16 @@
+.DS_Store
+.idea/*
+.vscode/*
+.history/
+*.ppm
+*.jpg
+*.o
+sub*.o*
+sub*.e*
+*.prv
+*.pcf
+*.row
+time-heat-omp*boada*.txt
+heat
+heat-opm
+heat-mpi
