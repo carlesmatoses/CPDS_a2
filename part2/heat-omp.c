@@ -81,6 +81,8 @@ int main( int argc, char *argv[] )
 
     // full size (param.resolution are only the inner points)
     np = param.resolution + 2;
+    // get the number of threads
+    int num_threads = omp_get_max_threads();
     
 #if _EXTRAE_
     Extrae_init();
@@ -92,8 +94,10 @@ int main( int argc, char *argv[] )
     while(1) {
 	switch( param.algorithm ) {
 	    case 0: // JACOBI
-	            residual = relax_jacobi(param.u, param.uhelp, np, np);
+            residual = relax_jacobi(param.u, param.uhelp, np, np);
+
 		    // Copy uhelp into u
+            #pragma omp parallel for
 		    for (int i=0; i<np; i++)
     		        for (int j=0; j<np; j++)
 	    		    param.u[ i*np+j ] = param.uhelp[ i*np+j ];
@@ -122,6 +126,11 @@ int main( int argc, char *argv[] )
 #if _EXTRAE_
     Extrae_fini();
 #endif
+
+
+
+    // print the number of threads
+    printf("Number of threads: %d\n", num_threads);
 
     fprintf(stdout, "Time: %04.3f ", runtime);
     fprintf(stdout, "(%3.3f GFlop => %6.2f MFlop/s)\n", 

@@ -12,10 +12,11 @@ double relax_jacobi (double *u, double *utmp, unsigned sizex, unsigned sizey)
 {
     double diff, sum=0.0;
     int nbx, bx, nby, by;
+    int threads = omp_get_max_threads();
 
-    nbx = NB;
+    nbx = threads;
     bx = sizex/nbx;
-    nby = NB;
+    nby = 1;
     by = sizey/nby;
 
     #pragma omp parallel for reduction(+:sum) private(diff)
