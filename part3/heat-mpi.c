@@ -46,6 +46,7 @@ int main( int argc, char *argv[] )
     MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
     MPI_Comm_rank(MPI_COMM_WORLD, &myid);
 
+    // Create the root worker
     if (myid == 0) {
         printf("I am the master (%d) and going to distribute work to %d additional workers ...\n", myid, numprocs-1);
 
@@ -100,7 +101,10 @@ int main( int argc, char *argv[] )
         param.uhelp = 0;
         param.uvis  = 0;
         param.visres = param.resolution;
-    
+        MPI_Request send_requests[1];
+        MPI_Request recv_requests[1];
+        MPI_Status statuses[1];
+
         if( !initialize(&param) )
         {
             fprintf(stderr, "Error in Solver initialization.\n\n");
@@ -117,7 +121,8 @@ int main( int argc, char *argv[] )
         // send to workers the necessary data to perform computation
         int *rows_per_process = malloc(numprocs * sizeof(int));
         divide_rows(param.resolution, numprocs, rows_per_process);
-
+        
+        // Send specific row collection to each worker
         int row_offset = 1;
         for (int i=0; i<numprocs; i++) {
             if (i>0) {
@@ -148,6 +153,7 @@ int main( int argc, char *argv[] )
 
         iter = 0;
         while(1) {
+
         switch( param.algorithm ) {
             case 0: // JACOBI
                 residual = relax_jacobi(u, uhelp, rows_per_process[0]+2, np);
@@ -164,19 +170,20 @@ int main( int argc, char *argv[] )
                 break;
             }
             if (iter % 1000 == 0) {
-                printf("iteration = %d\n with residual %f",  iter, gresidual);
+                printf("iteration = %d\n  with residual %f\n",  iter, gresidual);
             }
             iter++;
 
             if(numprocs > 1) {
                 // send bottom row and recieve top row from worker 1
-                MPI_Sendrecv(   &u[(rows_per_process[0]) * np], np, MPI_DOUBLE, 1, 0, 
-                                &u[(rows_per_process[0] + 1) * np], np, MPI_DOUBLE, 1, 0, 
-                                MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            }
+                MPI_Isend(&u[(rows_per_process[0]) * np], np, MPI_DOUBLE, 1, 0, MPI_COMM_WORLD, &send_requests[0]);
+                MPI_Irecv(&u[(rows_per_process[0] + 1) * np], np, MPI_DOUBLE, 1, 0, MPI_COMM_WORLD, &recv_requests[0]);
 
-            MPI_Reduce(&residual, &gresidual, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-            MPI_Bcast(&gresidual, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+            }
+            
+            MPI_Allreduce(&residual, &gresidual, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+            
+            if(numprocs > 1) MPI_Waitall(1, recv_requests, statuses);
 
             // solution good enough ?
             if (gresidual < 0.00005) break;
@@ -191,7 +198,7 @@ int main( int argc, char *argv[] )
             MPI_Recv(&param.u[row_offset*np], rows_per_process[i]*np, MPI_DOUBLE, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
             row_offset += rows_per_process[i];
         }
-        // copy the u and uhelp into the first segment of the matrix
+        // copy the local u and uhelp into the global u matrix
         for (int i=0; i<rows_per_process[0]+2; i++) {
             for (int j=0; j<np; j++) {
                 param.u[i*np+j] = u[(i)*np+j];
@@ -227,7 +234,7 @@ int main( int argc, char *argv[] )
 
         return 0;
 
-    } else {
+    } else { // Create the other workers
 
         printf("I am worker %d and ready to receive work to do ...\n", myid);
 
@@ -236,7 +243,15 @@ int main( int argc, char *argv[] )
         int columns, rows, np;
         int iter, maxiter;
         int algorithm;
+        int num_requests;
         double residual;
+        if (myid == numprocs - 1) {
+            num_requests = 1;
+        } else {
+            num_requests = 2;
+        }
+        MPI_Request send_requests[num_requests], recv_requests[num_requests];
+        MPI_Status statuses[2];
 
         MPI_Recv(&maxiter,   1, MPI_INT, 0, maxiter_tag, MPI_COMM_WORLD, &status);
         MPI_Recv(&columns,   1, MPI_INT, 0, resolution_tag, MPI_COMM_WORLD, &status);
@@ -278,25 +293,26 @@ int main( int argc, char *argv[] )
             iter++;
 
             if (myid < numprocs - 1) {
-                // Send top row to worker myid-1 and receive top ghost row from myid-1
-                MPI_Sendrecv(&u[np], np, MPI_DOUBLE, myid - 1, 0,
-                            &u[0], np, MPI_DOUBLE, myid - 1, 0,
-                            MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                // Send top row to worker myid-1
+                MPI_Isend(&u[np], np, MPI_DOUBLE, myid - 1, 0, MPI_COMM_WORLD, &send_requests[0]);
+                // Receive top ghost row from worker myid-1
+                MPI_Irecv(&u[0], np, MPI_DOUBLE, myid - 1, 0, MPI_COMM_WORLD, &recv_requests[0]);
 
-                // Send bottom row to worker myid+1 and receive bottom ghost row from myid+1
-                MPI_Sendrecv(&u[rows * np], np, MPI_DOUBLE, myid + 1, 0,
-                            &u[(rows + 1) * np], np, MPI_DOUBLE, myid + 1, 0,
-                            MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                // Send bottom row to worker myid+1
+                MPI_Isend(&u[rows * np], np, MPI_DOUBLE, myid + 1, 0, MPI_COMM_WORLD, &send_requests[1]);
+                // Receive bottom ghost row from worker myid+1
+                MPI_Irecv(&u[(rows + 1) * np], np, MPI_DOUBLE, myid + 1, 0, MPI_COMM_WORLD, &recv_requests[1]);
             }
             if (myid == numprocs - 1) {
-                // Send top row to worker myid-1 and receive top ghost row from myid-1
-                MPI_Sendrecv(&u[np], np, MPI_DOUBLE, myid - 1, 0,
-                            &u[0], np, MPI_DOUBLE, myid - 1, 0,
-                            MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                // Send top row to worker myid-1
+                MPI_Isend(&u[np], np, MPI_DOUBLE, myid - 1, 0, MPI_COMM_WORLD, &send_requests[0]);
+                // Receive top ghost row from worker myid-1
+                MPI_Irecv(&u[0], np, MPI_DOUBLE, myid - 1, 0, MPI_COMM_WORLD, &recv_requests[0]);
+    
             }
-
-            MPI_Reduce(&residual, NULL, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		    MPI_Bcast(&gresidual, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+            MPI_Allreduce(&residual, &gresidual, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+            
+            MPI_Waitall(num_requests, recv_requests, statuses);
 
             // solution good enough ?
             if (gresidual < 0.00005) break;
