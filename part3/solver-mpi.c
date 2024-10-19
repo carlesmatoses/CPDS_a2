@@ -8,13 +8,7 @@
 double relax_jacobi (double *u, double *utmp, unsigned sizex, unsigned sizey)
 {
     double diff, sum=0.0;
-    int nbx, bx, nby, by;
   
-    nbx = NB;
-    bx = sizex/nbx;
-    nby = NB;
-    by = sizey/nby;
-
     for (int i = 1; i <= sizex - 2; i++) {
         for (int j = 1; j <= sizey - 2; j++) {
             utmp[i * sizey + j] = 0.25 * (
