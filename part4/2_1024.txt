@@ -1,0 +1,22 @@
+Solving Heat equation on the CPU and the GPU
+--------------------------------------------
+Number of threads per block in each dimension = 8
+Number of blocks per grid in each dimension   = 129
+cpds1118@boada-6:~/a2/part4$ cat submit-heat-CUDA.sh.o225556
+Running heat-CUDA
+Iterations        : 1000000
+Resolution        : 1024
+Num. Heat sources : 2
+   1: (0.10, 0.10) 1.00 2.50
+   2: (0.70, 1.00) 1.00 2.50
+
+Execution on CPU (sequential)
+-----------------------------
+Time on CPU in ms.= 466527.000000 (564.410 GFlop => 1209.81 MFlop/s)
+Convergence to residual=0.000050: 48933 iterations
+
+Execution on GPU
+----------------
+
+Time on GPU in ms. = 216369.687500 (564.410 GFlop => 2608.54 MFlop/s)
+Convergence to residual=0.000050: 48931 iterations

@@ -275,18 +275,19 @@ int main( int argc, char *argv[] ) {
         gpu_Heat<<<Grid,Block>>>(dev_u, dev_uhelp, np);
         cudaDeviceSynchronize();  // Wait for compute device to finish.
 
+        // 2 
         // TODO: residual is computed on host, we need to get from GPU values computed in u and uhelp
-        // cudaMemcpy(param.uhelp, dev_uhelp, np*np*sizeof(float), cudaMemcpyDeviceToHost);
-        // cudaMemcpy(param.u,     dev_u,     np*np*sizeof(float), cudaMemcpyDeviceToHost);
-
-        // residual = cpu_residual (param.u, param.uhelp, np, np);
+        cudaMemcpy(param.uhelp, dev_uhelp, np*np*sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(param.u,     dev_u,     np*np*sizeof(float), cudaMemcpyDeviceToHost);
+        residual = cpu_residual (param.u, param.uhelp, np, np);
+        
         // cudaMemset(d_res, 0, sizeof(float));
         // gpu_residual<<<Grid,Block>>>(dev_u, dev_uhelp, np, np, d_res);
 
-        cudaMemset(d_res, 0, sizeof(float));
-        int sharedMemSize = Block_Dim * Block_Dim * sizeof(float);
-        gpu_residual_reduction<<<Grid, Block, sharedMemSize>>>(dev_u, dev_uhelp, np, np, d_res);
-        cudaMemcpy(&residual, d_res, sizeof(float), cudaMemcpyDeviceToHost);
+        // cudaMemset(d_res, 0, sizeof(float));
+        // int sharedMemSize = Block_Dim * Block_Dim * sizeof(float);
+        // gpu_residual_reduction<<<Grid, Block, sharedMemSize>>>(dev_u, dev_uhelp, np, np, d_res);
+        // cudaMemcpy(&residual, d_res, sizeof(float), cudaMemcpyDeviceToHost);
 
         float * tmp = dev_u;
         dev_u = dev_uhelp;
