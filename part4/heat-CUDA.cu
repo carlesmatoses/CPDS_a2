@@ -53,6 +53,50 @@ float cpu_residual (float *u, float *utmp, unsigned sizex, unsigned sizey)
     return(sum);
 }
 
+__global__ void gpu_residual (float *h, float *g, unsigned sizex, unsigned sizey, float *res) {
+
+	// TODO: kernel computation for residual
+    int i = blockIdx.y * blockDim.y + threadIdx.y;
+    int j = blockIdx.x * blockDim.x + threadIdx.x;
+    float diff;
+
+    if (i > 0 && i < sizex-1 && j > 0 && j < sizey-1) {
+        diff = g[i*sizey+j] - h[i*sizey + j];
+        atomicAdd(res, diff * diff);
+    }
+}
+
+__global__ void gpu_residual_reduction(float *h, float *g, unsigned sizex, unsigned sizey, float *res) {
+    extern __shared__ float sdata[];
+    unsigned int tid = threadIdx.x + threadIdx.y * blockDim.x;
+    unsigned int i = blockIdx.y * blockDim.y + threadIdx.y;
+    unsigned int j = blockIdx.x * blockDim.x + threadIdx.x;
+    float diff = 0.0f;
+
+    if (i > 0 && i < sizex-1 && j > 0 && j < sizey-1) {
+        diff = g[i*sizey+j] - h[i*sizey + j];
+        sdata[tid] = diff * diff;
+    } else {
+        sdata[tid] = 0.0f;
+    }
+    __syncthreads();
+
+    // Perform reduction in shared memory using sequential addressing
+    for (unsigned int s = 1; s < blockDim.x * blockDim.y; s *= 2) {
+        unsigned int index = 2 * s * tid;
+        if (index < blockDim.x * blockDim.y) {
+            sdata[index] += sdata[index + s];
+        }
+        __syncthreads();
+    }
+
+    // Write the result for this block to global memory
+    if (tid == 0) {
+        atomicAdd(res, sdata[0]);
+    }
+}
+
+
 float cpu_jacobi (float *u, float *utmp, unsigned sizex, unsigned sizey)
 {
     float diff, sum=0.0;
@@ -212,12 +256,16 @@ int main( int argc, char *argv[] ) {
     cudaEventRecord( start, 0 );
     cudaEventSynchronize( start );
 
-    float *dev_u, *dev_uhelp;
+    float *dev_u, *dev_uhelp, *d_res, *d_partial_res;
 
     // TODO: Allocation on GPU for matrices u and uhelp
     cudaMalloc(&dev_u, np*np*sizeof(float));
     cudaMalloc(&dev_uhelp, np*np*sizeof(float));
+    cudaMalloc(&d_res, sizeof(float));
 
+    int numBlocks = (np * np + Block_Dim * Block_Dim - 1) / (Block_Dim * Block_Dim);
+    cudaMalloc(&d_partial_res, numBlocks*sizeof(float));
+    
     // TODO: Copy initial values in u and uhelp from host to GPU
     cudaMemcpy(dev_u, param.u, np*np*sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(dev_uhelp, param.uhelp, np*np*sizeof(float), cudaMemcpyHostToDevice);
@@ -231,11 +279,21 @@ int main( int argc, char *argv[] ) {
         cudaMemcpy(param.uhelp, dev_uhelp, np*np*sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(param.u,     dev_u,     np*np*sizeof(float), cudaMemcpyDeviceToHost);
 
-        residual = cpu_residual (param.u, param.uhelp, np, np);
+        // residual = cpu_residual (param.u, param.uhelp, np, np);
+        // cudaMemset(d_res, 0, sizeof(float));
+        // gpu_residual<<<Grid,Block>>>(dev_u, dev_uhelp, np, np, d_res);
+
+        cudaMemset(d_res, 0, sizeof(float));
+        int sharedMemSize = Block_Dim * Block_Dim * sizeof(float);
+        gpu_residual_reduction<<<Grid, Block, sharedMemSize>>>(dev_u, dev_uhelp, np, np, d_res);
+
+
+        cudaMemcpy(&residual, d_res, sizeof(float), cudaMemcpyDeviceToHost);
+
 
         float * tmp = dev_u;
         dev_u = dev_uhelp;
-        dev_uhelp = tmp; // ?
+        dev_uhelp = tmp;
 
         iter++;
 
@@ -252,6 +310,7 @@ int main( int argc, char *argv[] ) {
     // TODO: free memory used in GPU
     cudaFree(dev_u);
     cudaFree(dev_uhelp);
+    cudaFree(d_res);    
 
     cudaEventRecord( stop, 0 );     // instrument code to measue end time
     cudaEventSynchronize( stop );
