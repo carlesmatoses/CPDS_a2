@@ -256,6 +256,7 @@ int main( int argc, char *argv[] )
         MPI_Recv(&maxiter,   1, MPI_INT, 0, maxiter_tag, MPI_COMM_WORLD, &status);
         MPI_Recv(&columns,   1, MPI_INT, 0, resolution_tag, MPI_COMM_WORLD, &status);
         MPI_Recv(&rows,      1, MPI_INT, 0, rows_tag, MPI_COMM_WORLD, &status);
+        MPI_Recv(&algorithm, 1, MPI_INT, 0, algorithm_tag, MPI_COMM_WORLD, &status);
         printf("Received rows = %d and columns = %d\n", rows, columns);
         np = columns + 2;
 
@@ -271,6 +272,8 @@ int main( int argc, char *argv[] )
         // fill initial values for matrix with values received from master
         MPI_Recv(&u[0], (rows+2)*(np), MPI_DOUBLE, 0, u_tag, MPI_COMM_WORLD, &status);
         MPI_Recv(&uhelp[0], (rows+2)*(np), MPI_DOUBLE, 0, uhelp_tag, MPI_COMM_WORLD, &status);
+
+        if (myid == 1) printf("Algorithm: %d\n", algorithm);
 
         iter = 0;
         while(1) {
