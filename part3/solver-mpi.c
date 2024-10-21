@@ -1,7 +1,8 @@
+#include <mpi.h>
 #include "heat.h"
 
 #define min(a,b) ( ((a) < (b)) ? (a) : (b) )
-#define NB 1
+#define NB 16
 /*
  * Blocked Jacobi solver: one iteration step
  */
@@ -79,24 +80,40 @@ double relax_redblack (double *u, unsigned sizex, unsigned sizey)
 double relax_gauss (double *u, unsigned sizex, unsigned sizey)
 {
     double unew, diff, sum=0.0;
-    int nbx, bx, nby, by;
+    int nby, by, numprocs, myid, previd, nextid;
 
-    nbx = NB;
-    bx = sizex/nbx;
+    MPI_Status status;
+    MPI_Request req[NB];
+
+    MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
+    MPI_Comm_rank(MPI_COMM_WORLD, &myid);
+
+    previd = myid == 0 ? MPI_PROC_NULL : myid - 1;
+    nextid = myid == numprocs - 1 ? MPI_PROC_NULL : myid + 1;
+
     nby = NB;
     by = sizey/nby;
-    for (int ii=0; ii<nbx; ii++)
-        for (int jj=0; jj<nby; jj++) 
-            for (int i=1+ii*bx; i<=min((ii+1)*bx, sizex-2); i++) 
-                for (int j=1+jj*by; j<=min((jj+1)*by, sizey-2); j++) {
-	            unew= 0.25 * (    u[ i*sizey	+ (j-1) ]+  // left
-				      u[ i*sizey	+ (j+1) ]+  // right
-				      u[ (i-1)*sizey	+ j     ]+  // top
-				      u[ (i+1)*sizey	+ j     ]); // bottom
-	            diff = unew - u[i*sizey+ j];
-	            sum += diff * diff; 
-	            u[i*sizey+j]=unew;
-                }
+
+    for (int jj=0; jj<nby; jj++) {
+
+        // Read first line from prev process
+        MPI_Recv(u, by, MPI_DOUBLE, previd, jj, MPI_COMM_WORLD, &status);
+
+        for (int i=1; i<=sizex-2; i++) {
+            for (int j=1+jj*by; j<=min((jj+1)*by, sizey-2); j++) {
+                unew= 0.25 * (    u[ i*sizey	+ (j-1) ]+  // left
+                                  u[ i*sizey	+ (j+1) ]+  // right
+                                  u[ (i-1)*sizey	+ j     ]+  // top
+                                  u[ (i+1)*sizey	+ j     ]); // bottom
+                diff = unew - u[i*sizey+ j];
+                sum += diff * diff;
+                u[i*sizey+j]=unew;
+            }
+        }
+
+        // Send last line to next process
+        MPI_Send(&u[(sizex-2) * sizey + jj * sizex], by, MPI_DOUBLE, nextid, jj, MPI_COMM_WORLD);
+    }
 
     return sum;
 }

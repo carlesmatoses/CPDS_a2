@@ -166,7 +166,7 @@ int main( int argc, char *argv[] )
                 residual = relax_redblack(param.u, np, np);
                 break;
             case 2: // GAUSS
-                residual = relax_gauss(param.u, np, np);
+                residual = relax_gauss(u, rows_per_process[0]+2, np);
                 break;
             }
             if (iter % 1000 == 0) {
@@ -289,7 +289,7 @@ int main( int argc, char *argv[] )
                 residual = relax_redblack(u, np, np);
                 break;
             case 2: // GAUSS
-                residual = relax_gauss(u, np, np);
+                residual = relax_gauss(u, rows+2, np);
                 break;
             }
 
