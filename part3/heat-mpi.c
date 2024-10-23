@@ -169,9 +169,9 @@ int main( int argc, char *argv[] )
                 residual = relax_gauss(param.u, np, np);
                 break;
             }
-            if (iter % 1000 == 0) {
-                printf("iteration = %d\n  with residual %f\n",  iter, gresidual);
-            }
+            // if (iter % 1000 == 0) {
+            //     printf("iteration = %d\n  with residual %f\n",  iter, gresidual);
+            // }
             iter++;
 
             if(numprocs > 1) {

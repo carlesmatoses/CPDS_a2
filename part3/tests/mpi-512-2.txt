@@ -1,0 +1,13 @@
+I am the master (0) and going to distribute work to 1 additional workers ...
+Iterations        : 0
+Resolution        : 512
+Algorithm         : 0 (Jacobi)
+Num. Heat sources : 2
+   1: (0.10, 0.10) 1.00 2.50 
+   2: (0.70, 1.00) 1.00 2.50 
+I am worker 1 and ready to receive work to do ...
+Received rows = 256 and columns = 512
+Time: 12.054 (90.562 GFlop => 7513.20 MFlop/s)
+Convergence to residual=0.000022: 31406 iterations
+Process 1 finished computing 31406 iterations with residual value = 0.000050
+Process 0 finished computing with residual value = 0.000050

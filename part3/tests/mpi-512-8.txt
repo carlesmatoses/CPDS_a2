@@ -1,0 +1,31 @@
+I am worker 3 and ready to receive work to do ...
+I am worker 5 and ready to receive work to do ...
+I am worker 7 and ready to receive work to do ...
+I am worker 1 and ready to receive work to do ...
+I am the master (0) and going to distribute work to 7 additional workers ...
+I am worker 2 and ready to receive work to do ...
+I am worker 4 and ready to receive work to do ...
+I am worker 6 and ready to receive work to do ...
+Iterations        : 0
+Resolution        : 512
+Algorithm         : 0 (Jacobi)
+Num. Heat sources : 2
+   1: (0.10, 0.10) 1.00 2.50 
+   2: (0.70, 1.00) 1.00 2.50 
+Received rows = 64 and columns = 512
+Received rows = 64 and columns = 512
+Received rows = 64 and columns = 512
+Received rows = 64 and columns = 512
+Received rows = 64 and columns = 512
+Received rows = 64 and columns = 512
+Received rows = 64 and columns = 512
+Process 1 finished computing 31406 iterations with residual value = 0.000050
+Process 2 finished computing 31406 iterations with residual value = 0.000050
+Process 3 finished computing 31406 iterations with residual value = 0.000050
+Process 4 finished computing 31406 iterations with residual value = 0.000050
+Process 5 finished computing 31406 iterations with residual value = 0.000050
+Process 6 finished computing 31406 iterations with residual value = 0.000050
+Time: 3.599 (90.562 GFlop => 25166.45 MFlop/s)
+Convergence to residual=0.000001: 31406 iterations
+Process 7 finished computing 31406 iterations with residual value = 0.000050
+Process 0 finished computing with residual value = 0.000050

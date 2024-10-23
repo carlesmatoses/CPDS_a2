@@ -1,0 +1,3 @@
+Time: 136.805 (564.064 GFlop => 4123.11 MFlop/s)
+Convergence to residual=0.000022: 48903 iterations
+Process 0 finished computing with residual value = 0.000050
