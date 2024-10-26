@@ -94,7 +94,7 @@ double relax_gauss (double *u, unsigned sizex, unsigned sizey)
     double unew, diff, sum=0.0;
     int nbx, bx, nby, by;
 
-    nbx = NB;
+    nbx = omp_get_max_threads();
     bx = sizex/nbx;
     nby = NB;
     by = sizey/nby;
@@ -107,15 +107,7 @@ double relax_gauss (double *u, unsigned sizex, unsigned sizey)
         {
             for (int ii = 0; ii < nbx; ii++) {
                 for (int jj = 0; jj < nby; jj++) {
-
-                    int istart = 1 + ii * bx;
-                    int jstart = 1 + jj * by;
-                    int iend = min((ii + 1) * bx, sizex - 2);
-                    int jend = min((jj + 1) * by, sizey - 2);
-                    int arrayStart = istart * sizey + (jstart - 1);
-                    int arrayEnd = iend * sizey + (jend - 1);
-
-#pragma omp task private(diff) firstprivate(ii,jj) in_reduction(+: sum) depend(inout: u[arrayStart:arrayEnd])
+#pragma omp task private(diff) firstprivate(ii,jj) in_reduction(+: sum) depend(in: u[(ii-1) * NB + jj], u[ii * NB + (jj-1)]) depend(in: u[ii * NB + jj])
                     {
                         for (int i = 1 + ii * bx; i <= min((ii + 1) * bx, sizex - 2); i++) {
                             for (int j = 1 + jj * by; j <= min((jj + 1) * by, sizey - 2); j++) {
@@ -133,6 +125,8 @@ double relax_gauss (double *u, unsigned sizex, unsigned sizey)
             }
         }
     }
+
+    printf("Sum: %f\n", sum);
 
     return sum;
 }
