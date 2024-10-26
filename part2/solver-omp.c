@@ -94,7 +94,7 @@ double relax_gauss (double *u, unsigned sizex, unsigned sizey)
     double unew, diff, sum=0.0;
     int nbx, bx, nby, by;
 
-    nbx = omp_get_max_threads();
+    nbx = NB;
     bx = sizex/nbx;
     nby = NB;
     by = sizey/nby;
@@ -136,7 +136,7 @@ double relax_gauss_ordered (double *u, unsigned sizex, unsigned sizey)
     double unew, diff, sum=0.0;
     int nbx, bx, nby, by;
 
-    nbx = NB;
+    nbx = omp_get_max_threads();
     bx = sizex/nbx;
     nby = NB;
     by = sizey/nby;
