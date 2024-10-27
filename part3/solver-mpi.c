@@ -82,7 +82,7 @@ double relax_gauss (double *u, unsigned sizex, unsigned sizey)
     double unew, diff, sum=0.0;
     int nby, by, numprocs, myid, previd, nextid;
 
-    MPI_Status status;
+    MPI_Status status[NB];
     MPI_Request req[NB];
 
     MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
@@ -97,7 +97,7 @@ double relax_gauss (double *u, unsigned sizex, unsigned sizey)
     for (int jj=0; jj<nby; jj++) {
 
         // Read first line from prev process
-        MPI_Recv(u, by, MPI_DOUBLE, previd, jj, MPI_COMM_WORLD, &status);
+        MPI_Recv(u, by, MPI_DOUBLE, previd, jj, MPI_COMM_WORLD, status);
 
         for (int i=1; i<=sizex-2; i++) {
             for (int j=1+jj*by; j<=min((jj+1)*by, sizey-2); j++) {
@@ -112,8 +112,10 @@ double relax_gauss (double *u, unsigned sizex, unsigned sizey)
         }
 
         // Send last line to next process
-        MPI_Send(&u[(sizex-2) * sizey + jj * sizex], by, MPI_DOUBLE, nextid, jj, MPI_COMM_WORLD);
+        MPI_Isend(&u[(sizex-2) * sizey + jj * sizex], by, MPI_DOUBLE, nextid, jj, MPI_COMM_WORLD, &req[jj]);
     }
+
+    MPI_Waitall(nby, req, status);
 
     return sum;
 }

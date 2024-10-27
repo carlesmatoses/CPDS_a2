@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "heat.h"
+#include <omp.h>
 #if _EXTRAE_
 #include "extrae_user_events.h"
 #endif
@@ -106,7 +107,7 @@ int main( int argc, char *argv[] )
 		    residual = relax_redblack(param.u, np, np);
 		    break;
 	    case 2: // GAUSS
-		    residual = relax_gauss(param.u, np, np);
+		    residual = relax_gauss_ordered(param.u, np, np);
 		    break;
 	    }
 
